@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h> // For usleep
 #include "editor.h"
 #include "buffer.h"
 #include "viewport.h"
@@ -84,26 +85,31 @@ int editor_run(EditorState* state) {
             editor_resize(state, new_rows, new_cols);
         }
         
-        // Read input event (key or mouse)
-        InputEvent event = terminal_read_event();
-        
-        switch (event.type) {
-            case EVENT_KEY:
-                if (terminal_is_quit(event.key)) {
-                    return 0;  // Exit the editor
-                }
-                if (editor_process_key(state, event.key)) {
-                    return 0;  // Exit signaled by key handler
-                }
-                break;
-                
-            case EVENT_MOUSE:
-                editor_process_mouse(state, event.mouse);
-                break;
-                
-            default:
-                break;
+        // Read input event (key or mouse) non-blocking
+        InputEvent event;
+        if (terminal_read_event_nonblock(&event)) {
+            // Only process events if they're available
+            switch (event.type) {
+                case EVENT_KEY:
+                    if (terminal_is_quit(event.key)) {
+                        return 0;  // Exit the editor
+                    }
+                    if (editor_process_key(state, event.key)) {
+                        return 0;  // Exit signaled by key handler
+                    }
+                    break;
+                    
+                case EVENT_MOUSE:
+                    editor_process_mouse(state, event.mouse);
+                    break;
+                    
+                default:
+                    break;
+            }
         }
+        
+        // Add a small sleep to avoid consuming 100% CPU
+        usleep(10000); // Sleep for 10ms
     }
     
     return 0;
@@ -262,7 +268,7 @@ void editor_insert_newline(EditorState* state) {
     editor_insert_text(state, "\n");
 }
 
-// Input handling
+// Input handling - only navigation, no editing
 int editor_process_key(EditorState* state, int key) {
     if (!state || !state->viewport) return 0;
     
@@ -317,31 +323,17 @@ int editor_process_key(EditorState* state, int key) {
             cmd_move_to_end_of_document(state);
             break;
             
-        // Editing operations
+        // Ignore editing keys - we're not implementing editing yet
         case KEY_ENTER:
-            editor_insert_newline(state);
-            break;
         case KEY_BACKSPACE:
         case KEY_CTRL_H:
-            editor_delete_text(state, 1);
-            break;
         case KEY_DELETE:
-            // Delete character at cursor position
-            if (state->viewport->cursor_x < viewport_line_length(state->viewport, state->viewport->cursor_y)) {
-                viewport_move_cursor(state->viewport, 1, 0);
-                editor_delete_text(state, 1);
-            } else if (state->viewport->cursor_y < state->viewport->total_lines - 1) {
-                // Delete newline by joining lines
-                editor_delete_text(state, 1);
-            }
+            // No operation for now
             break;
             
-        // Handle printable characters
+        // Ignore all printable characters
         default:
-            if (key >= 32 && key < 127) {
-                char c = (char)key;
-                editor_insert_text(state, &c);
-            }
+            // No operation for printable characters
             break;
     }
     

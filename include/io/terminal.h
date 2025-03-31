@@ -154,6 +154,14 @@ void terminal_cleanup(void);
 char terminal_read_char(void);
 
 /**
+ * Try to read a character from terminal without blocking
+ * Returns immediately whether a character is available or not
+ * @param c Pointer to store the character if available
+ * @return 1 if a character was read, 0 if no character was available
+ */
+int terminal_read_char_nonblock(char* c);
+
+/**
  * Check if a character is the quit command (Ctrl+Q)
  * @param c The character to check
  * @return 1 if it's the quit command, 0 otherwise
@@ -173,6 +181,14 @@ void terminal_get_size(size_t* rows, size_t* cols);
  * @return The input event read
  */
 InputEvent terminal_read_event(void);
+
+/**
+ * Non-blocking version of terminal_read_event
+ * Checks for input and returns immediately whether input is available or not
+ * @param event Pointer to store the event if available
+ * @return 1 if an event was read, 0 if no event was available
+ */
+int terminal_read_event_nonblock(InputEvent* event);
 
 /**
  * Check if a sequence is a mouse event

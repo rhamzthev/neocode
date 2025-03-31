@@ -88,6 +88,26 @@ char terminal_read_char(void) {
     return c;
 }
 
+// Add this new function after terminal_read_char
+int terminal_read_char_nonblock(char* c) {
+    int nread;
+    fd_set readfds;
+    struct timeval tv = {0, 0}; // Zero timeout for non-blocking behavior
+    
+    FD_ZERO(&readfds);
+    FD_SET(STDIN_FILENO, &readfds);
+    
+    // Check if input is available without blocking
+    if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv) > 0) {
+        nread = read(STDIN_FILENO, c, 1);
+        if (nread == 1) {
+            return 1; // Character available and read
+        }
+    }
+    
+    return 0; // No character available
+}
+
 int terminal_is_quit(char c) {
     return c == KEY_CTRL_Q; // Ctrl+Q
 }
@@ -279,4 +299,65 @@ InputEvent terminal_read_event(void) {
     }
     
     return event;
+}
+
+int terminal_read_event_nonblock(InputEvent* event) {
+    if (!event) return 0;
+    
+    // Initialize event to NONE by default
+    event->type = EVENT_NONE;
+    
+    // Check if input is available without blocking
+    char c;
+    if (terminal_read_char_nonblock(&c)) {
+        // Input is available, start processing
+        char sequence[MAX_SEQUENCE_LENGTH] = {0};
+        int seq_pos = 0;
+        
+        if (c == ESC[0]) {
+            // Could be an escape sequence
+            sequence[seq_pos++] = c;
+            
+            // Try to read more characters to form a complete sequence
+            while (seq_pos < MAX_SEQUENCE_LENGTH - 1) {
+                // Short timeout to check if more characters are coming
+                struct timeval tv = {0, 5000}; // 5ms timeout - reduced from original
+                fd_set readfds;
+                FD_ZERO(&readfds);
+                FD_SET(STDIN_FILENO, &readfds);
+                
+                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv) <= 0) {
+                    // Timeout or error - no more chars to read
+                    break;
+                }
+                
+                char next_char;
+                int nread = read(STDIN_FILENO, &next_char, 1);
+                if (nread != 1) break;
+                
+                sequence[seq_pos++] = next_char;
+                sequence[seq_pos] = '\0';
+                
+                // Check if we've read a complete mouse sequence
+                if (terminal_is_mouse_sequence(sequence) && 
+                    (seq_pos >= 3 && (sequence[seq_pos-1] == 'M' || sequence[seq_pos-1] == 'm'))) {
+                    event->type = EVENT_MOUSE;
+                    event->mouse = terminal_parse_mouse_sequence(sequence);
+                    return 1;  // Event available
+                }
+            }
+            
+            // If it wasn't a mouse event, check for special keys
+            event->type = EVENT_KEY;
+            event->key = parse_escape_sequence(sequence, seq_pos);
+        } else {
+            // Regular key press
+            event->type = EVENT_KEY;
+            event->key = c;
+        }
+        
+        return 1;  // Event available
+    }
+    
+    return 0;  // No event available
 }

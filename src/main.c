@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h> // For usleep
 #include "terminal.h"
 #include "editor.h"
 #include "io.h"
@@ -22,12 +23,18 @@ int main(int argc, char *argv[]) {
         // No file specified, show welcome screen
         ui_welcome_screen(rows, cols);
         
-        // Wait for user to press Ctrl+Q to quit
-        while (1) {
-            char c = terminal_read_char();
-            if (terminal_is_quit(c)) {
-                break;
+        // Non-blocking loop waiting for user to press Ctrl+Q to quit
+        int quit = 0;
+        while (!quit) {
+            char c;
+            if (terminal_read_char_nonblock(&c)) {
+                if (terminal_is_quit(c)) {
+                    quit = 1;
+                }
             }
+            
+            // Add a small sleep to avoid consuming 100% CPU
+            usleep(10000); // Sleep for 10ms
         }
         
         terminal_cleanup();
