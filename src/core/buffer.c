@@ -25,6 +25,7 @@ Buffer* buffer_create(const char* content) {
     buffer->add = malloc(INITIAL_ADD_CAPACITY);
     buffer->add_size = 0;
     buffer->add_capacity = INITIAL_ADD_CAPACITY;
+    buffer->modified = 0; // Initialize modified flag to false
     
     if (!buffer->original || !buffer->add) {
         buffer_free(buffer);
@@ -112,6 +113,9 @@ void buffer_insert(Buffer* buffer, size_t pos, const char* text) {
     
     current->next = new_piece;
     buffer->add_size += text_len;
+    
+    // Set the modified flag
+    buffer->modified = 1;
 }
 
 char* buffer_get_content(Buffer* buffer) {
@@ -177,24 +181,54 @@ void buffer_delete(Buffer* buffer, size_t pos, size_t length) {
         if (delete_start == 0 && delete_amount == current->length) {
             // Remove entire piece
             Piece* next = current->next;
+            if (current == buffer->head) {
+                buffer->head = next;
+            } else {
+                // Find the piece that points to current
+                Piece* prev = buffer->head;
+                while (prev && prev->next != current) {
+                    prev = prev->next;
+                }
+                if (prev) prev->next = next;
+            }
             free(current);
             current = next;
         } else {
             // Adjust piece length
-            current->length -= delete_amount;
             if (delete_start > 0) {
                 // Split piece if deletion is in the middle
                 Piece* after = create_piece(current->type,
                                           current->start + delete_start + delete_amount,
-                                          current->length - delete_start);
+                                          current->length - delete_start - delete_amount);
                 after->next = current->next;
                 current->next = after;
                 current->length = delete_start;
+            } else {
+                // Deletion at start of piece
+                current->start += delete_amount;
+                current->length -= delete_amount;
             }
+            current = current->next;
         }
 
         remaining -= delete_amount;
         delete_start = 0;
-        current = current->next;
+    }
+    
+    // Set modified flag if any deletion occurred
+    if (length > remaining) {
+        buffer->modified = 1;
+    }
+}
+
+// New functions for buffer modified state
+
+int buffer_is_modified(Buffer* buffer) {
+    return buffer ? buffer->modified : 0;
+}
+
+void buffer_set_modified(Buffer* buffer, int modified) {
+    if (buffer) {
+        buffer->modified = modified;
     }
 }

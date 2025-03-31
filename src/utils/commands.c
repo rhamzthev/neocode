@@ -6,33 +6,43 @@
 
 // Move cursor to start of current line
 void cmd_move_to_start_of_line(EditorState* state) {
+    if (!state || !state->viewport) return;
+    
     viewport_set_cursor(state->viewport, 0, state->viewport->cursor_y);
-    ui_render(state);
+    editor_refresh_view(state);
 }
 
 // Move cursor to end of current line
 void cmd_move_to_end_of_line(EditorState* state) {
+    if (!state || !state->viewport) return;
+    
     size_t line_len = viewport_line_length(state->viewport, state->viewport->cursor_y);
     viewport_set_cursor(state->viewport, line_len, state->viewport->cursor_y);
-    ui_render(state);
+    editor_refresh_view(state);
 }
 
 // Move cursor to start of document
 void cmd_move_to_start_of_document(EditorState* state) {
+    if (!state || !state->viewport) return;
+    
     viewport_set_cursor(state->viewport, 0, 0);
-    ui_render(state);
+    editor_refresh_view(state);
 }
 
 // Move cursor to end of document
 void cmd_move_to_end_of_document(EditorState* state) {
+    if (!state || !state->viewport) return;
+    
     size_t last_line = state->viewport->total_lines > 0 ? state->viewport->total_lines - 1 : 0;
     size_t last_line_len = viewport_line_length(state->viewport, last_line);
     viewport_set_cursor(state->viewport, last_line_len, last_line);
-    ui_render(state);
+    editor_refresh_view(state);
 }
 
 // Move cursor by word
 void cmd_move_word(EditorState* state, int direction) {
+    if (!state || !state->viewport) return;
+    
     Viewport* viewport = state->viewport;
     size_t cursor_x = viewport->cursor_x;
     size_t cursor_y = viewport->cursor_y;
@@ -80,11 +90,13 @@ void cmd_move_word(EditorState* state, int direction) {
     }
     
     viewport_set_cursor(viewport, cursor_x, cursor_y);
-    ui_render(state);
+    editor_refresh_view(state);
 }
 
 // Handle page up/down movement
 void cmd_page_move(EditorState* state, int direction) {
+    if (!state || !state->viewport) return;
+    
     Viewport* viewport = state->viewport;
     size_t screen_rows = viewport->screen_rows - 1; // Account for status bar
     
@@ -93,11 +105,13 @@ void cmd_page_move(EditorState* state, int direction) {
         viewport_move_cursor(viewport, 0, direction);
     }
     
-    ui_render(state);
+    editor_refresh_view(state);
 }
 
 // Process a mouse event (clicked position or scrolling)
 void cmd_process_mouse_event(EditorState* state, MouseEvent event) {
+    if (!state || !state->viewport) return;
+    
     Viewport* viewport = state->viewport;
     
     switch (event.type) {
@@ -124,20 +138,20 @@ void cmd_process_mouse_event(EditorState* state, MouseEvent event) {
                 
                 // Update cursor position
                 viewport_set_cursor(viewport, buffer_x, buffer_y);
-                ui_render(state);
+                editor_refresh_view(state);
             }
             break;
             
         case MOUSE_WHEEL_UP:
             // Scroll up (3 lines at a time)
             viewport_scroll(viewport, 0, -3);
-            ui_render(state);
+            editor_refresh_view(state);
             break;
             
         case MOUSE_WHEEL_DOWN:
             // Scroll down (3 lines at a time)
             viewport_scroll(viewport, 0, 3);
-            ui_render(state);
+            editor_refresh_view(state);
             break;
             
         default:

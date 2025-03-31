@@ -11,9 +11,15 @@
 
 #define MAX_SEQUENCE_LENGTH 32
 
+// Store original terminal state to restore later
 static struct termios orig_termios;
 
+/**
+ * Private function to restore terminal to original state
+ * Called automatically at program exit
+ */
 static void disable_raw_mode() {
+    // Restore terminal settings
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
     
     // Disable mouse tracking
@@ -27,9 +33,16 @@ static void disable_raw_mode() {
     fflush(stdout); // Ensure all escape sequences are processed
 }
 
-void terminal_init() {
+/**
+ * Initialize terminal for raw mode
+ * Sets up escape sequences, cursor style, mouse tracking
+ */
+void terminal_init(void) {
     // Save original terminal settings
-    tcgetattr(STDIN_FILENO, &orig_termios);
+    if (tcgetattr(STDIN_FILENO, &orig_termios) == -1) {
+        perror("tcgetattr");
+        exit(1);
+    }
     atexit(disable_raw_mode);
 
     // Configure raw mode
@@ -43,7 +56,10 @@ void terminal_init() {
     raw.c_cc[VMIN] = 0;  // Return immediately when any char is available
     raw.c_cc[VTIME] = 1; // Wait up to 100ms for input
     
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) {
+        perror("tcsetattr");
+        exit(1);
+    }
 
     // Switch to alternate screen and set cursor style
     printf(TERM_ALT_SCREEN_ON);
@@ -56,11 +72,11 @@ void terminal_init() {
     fflush(stdout);
 }
 
-void terminal_cleanup() {
+void terminal_cleanup(void) {
     disable_raw_mode();
 }
 
-char terminal_read_char() {
+char terminal_read_char(void) {
     int nread;
     char c;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
@@ -89,9 +105,13 @@ void terminal_get_size(size_t* rows, size_t* cols) {
     }
 }
 
-// Update the escape sequence parser to recognize more sequences
-
-int parse_escape_sequence(const char* sequence, int seq_len) {
+/**
+ * Parse an escape sequence to determine which key was pressed
+ * @param sequence The escape sequence to parse
+ * @param seq_len Length of the sequence
+ * @return Key code or KEY_ESC if not recognized
+ */
+static int parse_escape_sequence(const char* sequence, int seq_len) {
     if (seq_len < 2) return KEY_ESC;
     
     // Handle common arrow keys and navigation keys
@@ -150,7 +170,6 @@ int parse_escape_sequence(const char* sequence, int seq_len) {
     return KEY_ESC; // Default to ESC if not recognized
 }
 
-// Check if the sequence is a mouse event
 int terminal_is_mouse_sequence(const char* sequence) {
     if (strlen(sequence) >= 3 && sequence[0] == ESC[0] && sequence[1] == '[' && sequence[2] == '<') {
         return 1; // SGR mouse encoding
@@ -158,7 +177,6 @@ int terminal_is_mouse_sequence(const char* sequence) {
     return 0;
 }
 
-// Parse SGR-encoded mouse sequence
 MouseEvent terminal_parse_mouse_sequence(const char* sequence) {
     MouseEvent event = {MOUSE_NONE, 0, 0, 0};
     
@@ -207,8 +225,7 @@ MouseEvent terminal_parse_mouse_sequence(const char* sequence) {
     return event;
 }
 
-// Read a complete input event (key or mouse)
-InputEvent terminal_read_event() {
+InputEvent terminal_read_event(void) {
     InputEvent event = {EVENT_NONE};
     char sequence[MAX_SEQUENCE_LENGTH] = {0};
     int seq_pos = 0;

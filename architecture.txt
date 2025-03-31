@@ -1,0 +1,102 @@
+# Proposed Architecture Analysis
+
+Your proposed architecture is definitely feasible and represents a meaningful improvement over the current structure. Let me analyze this proposal:
+
+```ascii
+                    +-------+
+                    |  UI   |
+                    +---+---+
+                        |
+                        v
+                  +-----------+
+                  | Viewport  |
+                  +-----+-----+
+                        ^
+                        |
++---------+       +-----v-----+       +--------+
+|Terminal |------>|           |<------| Buffer |
++---------+       |  Editor   |       +--------+
+                  |           |
++---------+       |           |
+|   IO    |------>|           |
++---------+       +-----------+
+                        ^
++---------+             |
+|Commands |-------------+
++---------+
+```
+
+## Benefits of this architecture:
+
+1. **Clear separation of concerns**:
+   - UI only renders what viewport determines should be visible
+   - Editor acts as the central controller/coordinator
+   - Buffer purely manages text storage
+
+2. **Simplified data flow**:
+   - Terminal, IO, Commands all feed into Editor
+   - Editor mediates all access to the Buffer
+   - UI only needs to talk to Viewport
+
+3. **Reduced circular dependencies**:
+   - Most relationships are one-directional
+   - Only Editor<->Viewport are bidirectional
+
+4. **Better aligned with MVC pattern**:
+   - Model: Buffer (data storage)
+   - View: UI and Viewport (presentation)
+   - Controller: Editor (with Terminal/IO/Commands as inputs)
+
+5. **More maintainable and extensible**:
+   - Adding new features is easier with clear interfaces
+   - Components can be tested in isolation
+   - Potential for plugin system through editor hooks
+
+This architecture would make the codebase more maintainable and easier to understand for new contributors.
+
+---
+
+# Main.c and Editor.c Architecture Analysis
+
+Yes, it's absolutely feasible and actually preferable for main.c to only know about editor.c. This follows the facade pattern, where editor.c provides a simplified interface to the entire system.
+
+## Architecture with main.c focused on editor.c:
+
+```ascii
++----------+
+|  main.c  |  (Entry point with minimal knowledge)
++-----+----+
+      |
+      | (only knows)
+      v
++-----+------+
+| editor.c   |  (Coordinates everything)
++-----+------+
+      |
+      | (initializes & manages)
++-----+------+------+------+------+------+
+|     |      |      |      |      |      |
+v     v      v      v      v      v      v
+UI  Buffer  Viewport  IO  Terminal  Commands
+```
+
+## Benefits:
+
+1. **Simplified program flow**: 
+   - main.c initializes editor.c
+   - editor.c initializes everything else
+   - main.c runs the main event loop by delegating to editor.c
+
+2. **Clean separation of concerns**:
+   - main.c only handles program lifecycle
+   - editor.c handles application logic and component coordination
+
+3. **Better encapsulation**:
+   - Implementation details are hidden from main.c
+   - Makes the codebase more maintainable
+
+4. **Better testability**:
+   - editor.c can be tested independently from main.c
+   - Makes unit testing more straightforward
+
+In this architecture, main.c would be very thin, perhaps just 30-50 lines that initialize the editor, run the event loop, and handle graceful shutdown. All the actual complexity is encapsulated in editor.c and its managed components.

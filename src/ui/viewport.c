@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "viewport.h"
+#include "editor.h"
 
 static void update_line_cache(Viewport* viewport) {
     // Free previous content and cache if they exist
@@ -11,8 +12,8 @@ static void update_line_cache(Viewport* viewport) {
         free(viewport->line_cache);
     }
     
-    // Get fresh content from buffer
-    viewport->content = buffer_get_content(viewport->buffer);
+    // Get fresh content from editor (instead of directly from buffer)
+    viewport->content = editor_get_content(viewport->editor);
     if (!viewport->content) return;
 
     // Count lines and allocate cache
@@ -46,13 +47,14 @@ static void update_line_cache(Viewport* viewport) {
     // Do NOT free content here - we keep it for the lifetime of the viewport
 }
 
-Viewport* viewport_create(Buffer* buffer, size_t rows, size_t cols) {
+Viewport* viewport_create(struct EditorState* editor_state, size_t rows, size_t cols) {
     Viewport* viewport = malloc(sizeof(Viewport));
     if (!viewport) return NULL;
 
-    viewport->buffer = buffer;
+    viewport->editor = editor_state; // Store reference to editor instead of buffer
     viewport->cursor_x = 0;
     viewport->cursor_y = 0;
+    viewport->desired_x = 0;    // Initialize desired_x
     viewport->scroll_x = 0;
     viewport->scroll_y = 0;
     viewport->screen_rows = rows;
@@ -87,16 +89,43 @@ void viewport_move_cursor(Viewport* viewport, int dx, int dy) {
     int new_x = (int)viewport->cursor_x + dx;
     int new_y = (int)viewport->cursor_y + dy;
 
+    // Handle moving right at end of line
+    if (dx > 0 && new_y < (int)viewport->total_lines - 1) {
+        size_t current_line_len = viewport_line_length(viewport, viewport->cursor_y);
+        if (viewport->cursor_x >= current_line_len) {
+            new_x = 0;
+            new_y++;
+        }
+    }
+
+    // Handle moving left at beginning of line
+    if (dx < 0 && new_x < 0 && new_y > 0) {
+        new_y--; // Move to previous line
+        size_t prev_line_len = viewport_line_length(viewport, new_y);
+        new_x = prev_line_len; // Position cursor at the end of the previous line
+    }
+
     // Clamp Y position
     if (new_y < 0) new_y = 0;
     if (new_y >= (int)viewport->total_lines) {
         new_y = viewport->total_lines - 1;
     }
 
-    // Clamp X position based on line length
-    size_t line_len = viewport_line_length(viewport, new_y);
-    if (new_x < 0) new_x = 0;
-    if (new_x > (int)line_len) new_x = line_len;
+    // If moving horizontally, update the desired x position
+    if (dx != 0) {
+        // Clamp X position based on line length
+        size_t line_len = viewport_line_length(viewport, new_y);
+        if (new_x < 0) new_x = 0;
+        if (new_x > (int)line_len) new_x = line_len;
+        
+        viewport->desired_x = new_x;
+    }
+    // If moving vertically, use the desired x position
+    else if (dy != 0) {
+        size_t line_len = viewport_line_length(viewport, new_y);
+        // Set actual x position to the minimum of desired_x and the current line length
+        new_x = (int)(viewport->desired_x < line_len ? viewport->desired_x : line_len);
+    }
 
     viewport->cursor_x = new_x;
     viewport->cursor_y = new_y;
@@ -106,6 +135,7 @@ void viewport_move_cursor(Viewport* viewport, int dx, int dy) {
 void viewport_set_cursor(Viewport* viewport, size_t x, size_t y) {
     viewport->cursor_x = x;
     viewport->cursor_y = y;
+    viewport->desired_x = x;  // Update desired_x when explicitly setting cursor
     viewport_ensure_cursor_visible(viewport);
 }
 
@@ -158,11 +188,6 @@ void viewport_ensure_cursor_visible(Viewport* viewport) {
         viewport->scroll_x = viewport->cursor_x - viewport->screen_cols + 1;
     }
     
-    // Double-check bounds to ensure we respect file boundaries
-    if (viewport->scroll_y < 0) {
-        viewport->scroll_y = 0;
-    }
-    
     // Make sure we don't scroll past the last possible position
     if (viewport->total_lines > 0) {
         // Allow scrolling until the last line is the first visible line
@@ -172,10 +197,6 @@ void viewport_ensure_cursor_visible(Viewport* viewport) {
         }
     } else {
         viewport->scroll_y = 0;
-    }
-    
-    if (viewport->scroll_x < 0) {
-        viewport->scroll_x = 0;
     }
 }
 

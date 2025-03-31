@@ -9,6 +9,9 @@
 
 #define INITIAL_BUFFER_SIZE 16384  // 16KB initial buffer size
 
+// Defines the MAX macro which returns the larger of two values
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 // Create a new screen buffer
 ScreenBuffer* screen_buffer_create(size_t capacity) {
     ScreenBuffer* buffer = malloc(sizeof(ScreenBuffer));
@@ -127,6 +130,8 @@ void ui_welcome_screen(size_t rows, size_t cols) {
 
 // Draw status bar at the bottom of the screen
 void ui_status_bar(EditorState* state, ScreenBuffer* buffer) {
+    if (!state || !state->viewport) return;
+    
     Viewport* viewport = state->viewport;
     
     screen_buffer_append(buffer, COLOR_STATUS_BAR);
@@ -137,14 +142,18 @@ void ui_status_bar(EditorState* state, ScreenBuffer* buffer) {
     // Left side: filename and status
     char status[255];
     snprintf(status, sizeof(status), " %.20s %s", 
-             state->filename ? state->filename : "[No Name]",
-             state->dirty ? "[Modified]" : "");
+             editor_get_filename(state) ? editor_get_filename(state) : "[No Name]",
+             editor_is_dirty(state) ? "[Modified]" : "");
+    
+    // Get cursor position from viewport via editor for consistency
+    size_t cursor_x, cursor_y;
+    editor_get_cursor_position(state, &cursor_x, &cursor_y);
     
     // Right side: cursor position
     char position[255];
     snprintf(position, sizeof(position), "Ln %zu, Col %zu ", 
-             viewport->cursor_y + 1, 
-             viewport->cursor_x + 1);
+             cursor_y + 1,  // 1-indexed for user display
+             cursor_x + 1); // 1-indexed for user display
     
     // Print status bar with proper padding
     size_t status_len = strlen(status);
@@ -161,8 +170,53 @@ void ui_status_bar(EditorState* state, ScreenBuffer* buffer) {
     screen_buffer_append(buffer, COLOR_RESET);
 }
 
+// Draw a vertical scrollbar
+void ui_scrollbar(EditorState* state, ScreenBuffer* buffer) {
+    if (!state || !state->viewport) return;
+    
+    Viewport* viewport = state->viewport;
+    size_t visible_rows = viewport->screen_rows - 1; // Account for status bar
+    
+    // Only draw scrollbar if content exceeds viewport height
+    if (viewport->total_lines <= visible_rows) {
+        return;
+    }
+    
+    // Calculate scrollbar properties
+    size_t scrollbar_height = visible_rows;
+    size_t content_height = viewport->total_lines;
+    
+    // Calculate thumb size (proportional to visible/total ratio)
+    // Ensure thumb is at least 1 character tall
+    size_t thumb_size = (visible_rows * visible_rows) / content_height;
+    if (thumb_size < 1) thumb_size = 1;
+    
+    // Calculate thumb position
+    float scroll_ratio = (float)viewport->scroll_y / MAX(1, content_height - 1);
+    if (scroll_ratio > 1.0f) scroll_ratio = 1.0f;  // Safety check
+    size_t thumb_position = (scrollbar_height - thumb_size) * scroll_ratio;
+    
+    // Draw the scrollbar track and thumb
+    for (size_t i = 0; i < scrollbar_height; i++) {
+        // Position at right edge of screen
+        screen_buffer_appendf(buffer, CSI "%zu;%zuH", i + 1, viewport->screen_cols);
+        
+        // Draw thumb or track
+        if (i >= thumb_position && i < thumb_position + thumb_size) {
+            screen_buffer_append(buffer, COLOR_SCROLLBAR_THUMB);
+        } else {
+            screen_buffer_append(buffer, COLOR_SCROLLBAR_TRACK);
+        }
+        
+        screen_buffer_append(buffer, " ");
+        screen_buffer_append(buffer, COLOR_RESET);
+    }
+}
+
 // Function to render the buffer content through viewport with line numbers
 void ui_render(EditorState* state) {
+    if (!state || !state->viewport) return;
+    
     Viewport* viewport = state->viewport;
     
     ScreenBuffer* buffer = screen_buffer_create(INITIAL_BUFFER_SIZE);
@@ -202,6 +256,7 @@ void ui_render(EditorState* state) {
             screen_buffer_append(buffer, COLOR_CURRENT_LINE);
         }
         
+        // Get line through viewport, which accesses buffer via editor
         char* line = viewport_get_line(viewport, line_num);
         
         if (line) {
@@ -210,8 +265,8 @@ void ui_render(EditorState* state) {
             size_t visible_len = line_len;
 
             // Account for both line number width AND padding when calculating visible area
-            if (visible_len > viewport->screen_cols - (LINE_NUMBER_WIDTH + LINE_NUMBER_PADDING) - viewport->scroll_x) {
-                visible_len = viewport->screen_cols - (LINE_NUMBER_WIDTH + LINE_NUMBER_PADDING) - viewport->scroll_x;
+            if (visible_len > viewport->screen_cols - (LINE_NUMBER_WIDTH + LINE_NUMBER_PADDING) - SCROLLBAR_WIDTH - viewport->scroll_x) {
+                visible_len = viewport->screen_cols - (LINE_NUMBER_WIDTH + LINE_NUMBER_PADDING) - SCROLLBAR_WIDTH - viewport->scroll_x;
             }
             
             // Skip part of line before scroll_x
@@ -235,10 +290,9 @@ void ui_render(EditorState* state) {
         }
     }
     
-    // Fill any remaining rows with blank lines (removing the tildes)
+    // Fill any remaining rows with blank lines
     for (size_t i = visible_rows; i < viewport->screen_rows - 1; i++) {
         // Just use blank lines for all rows beyond the content
-        // No more tildes - just clear each line
         screen_buffer_append(buffer, TERM_CLEAR_LINE);
         
         if (i < viewport->screen_rows - 2) {
@@ -249,10 +303,16 @@ void ui_render(EditorState* state) {
     // Draw status bar
     ui_status_bar(state, buffer);
     
-    // Position cursor
+    // Draw scrollbar
+    ui_scrollbar(state, buffer);
+    
+    // Position cursor 
+    size_t cursor_x, cursor_y;
+    editor_get_cursor_position(state, &cursor_x, &cursor_y);
+    
     screen_buffer_appendf(buffer, CSI "%zu;%zuH", 
-                         viewport->cursor_y - viewport->scroll_y + 1, 
-                         viewport->cursor_x - viewport->scroll_x + LINE_NUMBER_WIDTH + LINE_NUMBER_PADDING + 1);
+                         cursor_y - viewport->scroll_y + 1, 
+                         cursor_x - viewport->scroll_x + LINE_NUMBER_WIDTH + LINE_NUMBER_PADDING + 1);
     
     // Flush the buffer to the screen
     screen_buffer_flush(buffer);
