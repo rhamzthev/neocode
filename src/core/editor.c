@@ -10,6 +10,8 @@
 #include "io.h"
 #include "terminal.h"
 
+#define SLEEP_LENGTH 5 * 1000
+
 // Create and initialize editor state
 EditorState* editor_init(const char* filename, size_t rows, size_t cols) {
     EditorState* state = malloc(sizeof(EditorState));
@@ -109,7 +111,7 @@ int editor_run(EditorState* state) {
         }
         
         // Add a small sleep to avoid consuming 100% CPU
-        usleep(10000); // Sleep for 10ms
+        usleep(SLEEP_LENGTH); // Sleep for 10ms
     }
     
     return 0;
@@ -409,4 +411,35 @@ void editor_refresh_view(EditorState* state) {
     
     viewport_refresh_cache(state->viewport);
     ui_render(state);
+}
+
+void editor_initialize_terminal(size_t* rows, size_t* cols) {
+    terminal_init();
+    terminal_get_size(rows, cols);
+}
+
+void editor_cleanup_terminal(void) {
+    terminal_cleanup();
+}
+
+void editor_show_welcome_screen(size_t rows, size_t cols) {
+    ui_welcome_screen(rows, cols);
+    
+    // Wait for user to press Ctrl+Q to quit
+    int quit = 0;
+    while (!quit) {
+        char c;
+        if (terminal_read_char_nonblock(&c)) {
+            if (terminal_is_quit(c)) {
+                quit = 1;
+            }
+        }
+        
+        // Add a small sleep to avoid consuming 100% CPU
+        usleep(SLEEP_LENGTH); // Sleep for 10ms
+    }
+}
+
+int editor_validate_file(const char* filename) {
+    return validate_object(filename) == OBJECT_FILE;
 }

@@ -116,6 +116,33 @@ void editor_process_mouse(EditorState* state, MouseEvent event);
  */
 void editor_resize(EditorState* state, size_t rows, size_t cols);
 
+// Terminal management functions
+/**
+ * Initialize terminal and get dimensions
+ * @param rows Output parameter for terminal height
+ * @param cols Output parameter for terminal width
+ */
+void editor_initialize_terminal(size_t* rows, size_t* cols);
+
+/**
+ * Clean up terminal resources
+ */
+void editor_cleanup_terminal(void);
+
+/**
+ * Show welcome screen and wait for quit key
+ * @param rows Terminal height
+ * @param cols Terminal width
+ */
+void editor_show_welcome_screen(size_t rows, size_t cols);
+
+/**
+ * Check if a file is valid for editing
+ * @param filename Path to file
+ * @return 1 if file is valid, 0 otherwise
+ */
+int editor_validate_file(const char* filename);
+
 // State access
 /**
  * Get buffer content as a string
