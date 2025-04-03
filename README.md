@@ -1,178 +1,186 @@
-# Neocode
+# Neocode Editor
 
-A lightweight terminal-based code editor providing a VS Code-like experience in your terminal. Neocode offers essential editing features with a clean, efficient interface for developers who prefer working in terminal environments.
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/username/ncode)
+[![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](https://github.com/username/ncode/releases)
 
-![Screenshot from 2025-04-03 11-40-03](https://github.com/user-attachments/assets/bcb942ff-d5d8-4188-94ca-1d51d684f36c)
+## Description
 
-## Features
+Neocode is a lightweight, terminal-based text editor written in C that focuses on efficiency and minimal resource usage. It uses a piece table data structure for text manipulation, providing efficient editing operations even for large files. Designed with a clean, modular architecture, Neocode offers a responsive editing experience with essential features for developers and writers who prefer working in terminal environments.
 
-- **Modern Terminal Interface**: Clean UI with line numbers, status bar, and current line highlighting
-- **Mouse Support**: Click to position cursor, scroll to navigate
-- **Efficient Navigation**: 
-  - Arrow keys for basic movement
-  - Home/End for line navigation
-  - Page Up/Down for quick scrolling
-  - Ctrl+Left/Right for word-by-word movement
-  - Ctrl+Home/End to jump to document start/end
-- **Memory Efficient**: Piece table implementation for optimized text operations
-- **Cross-Platform**: Works on any POSIX-compliant terminal environment
-- **Visual Feedback**: Highlights current line and shows document status
+![Screenshot from 2025-04-03 11-40-03](https://github.com/user-attachments/assets/b07a51b8-462a-471a-b33e-6ea2e9462843)
 
-## Requirements
 
-- GCC or compatible C compiler
-- POSIX-compliant operating system (Linux, macOS, BSD)
-- Terminal with ANSI escape sequence support
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
+- [Technologies](#technologies)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [License](#license)
+- [Status](#status)
 
 ## Installation
 
-### Building from Source
+### Prerequisites
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/neocode.git
-   cd neocode
-   ```
-
-2. Build using the Makefile:
-   ```bash
-   make clean && make
-   ```
-
-3. Alternatively, use the convenience script:
-   ```bash
-   chmod +x main.sh
-   ./main.sh
-   ```
-
-### Running Neocode
-
-Open a file with:
-```bash
-./bin/ncode path/to/your/file.c
+```
+- GCC or compatible C compiler
+- Make build system
+- POSIX-compliant operating system (Linux, macOS, etc.)
 ```
 
-Or use the convenience script:
-```bash
-./main.sh path/to/your/file.c
+### Dependencies
+
 ```
+- Standard C libraries only (no external dependencies)
+```
+
+### Installation Steps
+
+```bash
+# Step 1: Clone the repository
+git clone https://github.com/username/neocode.git
+
+# Step 2: Navigate to the project directory
+cd neocode
+
+# Step 3: Build the project
+make
+
+# Step 4: Run the editor
+./bin/ncode [filename]
+```
+
+### Platform-Specific Instructions
+
+#### Linux
+The editor should build and run on most Linux distributions without modification.
+
+#### macOS
+Compatible with macOS. Build using the standard steps above.
+
+#### Windows
+Not directly supported. Consider using WSL (Windows Subsystem for Linux) for Windows compatibility.
+
+### Troubleshooting
+
+If you encounter build errors, ensure your compiler supports C99 standards and that you have proper permissions to create files in the bin/ and obj/ directories.
 
 ## Usage
 
-### Keyboard Controls
+### Basic Example
 
-- **Navigation**:
-  - Arrow keys: Move cursor
-  - Home/End: Move to start/end of line
-  - PgUp/PgDn: Move up/down by one screen
-  - Ctrl+Left/Right: Move by word
-  - Ctrl+Home/End: Move to start/end of document
-  
-- **Editor Control**:
-  - Ctrl+Q: Quit editor
+```bash
+# Open a file for editing
+./bin/ncode myfile.txt
 
-### Mouse Controls
-
-- **Click**: Position cursor
-- **Scroll wheel**: Scroll document
-
-## Architecture
-
-Neocode is built with a modular architecture:
-
-```
-                    +-------+
-                    |  UI   |
-                    +---+---+
-                        |
-                        v
-                  +-----------+
-                  | Viewport  |
-                  +-----+-----+
-                        ^
-                        |
-+---------+       +-----v-----+       +--------+
-|Terminal |------>|           |<------| Buffer |
-+---------+       |  Editor   |       +--------+
-                  |           |
-+---------+       |           |
-|   IO    |------>|           |
-+---------+       +-----------+
-                        ^
-+---------+             |
-|Commands |-------------+
-+---------+
+# Create a new file (will be saved when you exit)
+./bin/ncode newfile.txt
 ```
 
-- **Buffer**: Uses a piece table data structure for efficient text manipulation
-- **Editor**: Central coordinator that manages application state
-- **Viewport**: Manages the visible portion of text and cursor positioning
-- **Terminal**: Handles raw terminal mode, input events, and escape sequences
-- **UI**: Implements rendering with double-buffering to avoid flicker
-- **Commands**: Implements editor commands (navigation, editing)
-- **IO**: Handles file operations
+### Navigation Controls
 
-## Project Structure
+- **Arrow Keys**: Move cursor
+- **Page Up/Down**: Scroll page by page
+- **Home/End**: Move to start/end of line
+- **Ctrl+Home/End**: Move to start/end of document
+- **Ctrl+Left/Right**: Move by word
+- **Mouse**: Click to position cursor, wheel to scroll
 
+### Quitting
+
+- **Ctrl+Q**: Quit the editor
+
+## Features
+
+### Core Functionality
+- Efficient text manipulation using piece table data structure
+- Terminal-based user interface with minimal resource usage
+- File loading and saving
+- Mouse support for navigation and cursor positioning
+
+### Key Highlights
+- Line numbers for easy reference
+- Status bar showing filename, modification status, and cursor position
+- Scrollbar for easier navigation in long files
+- Minimal memory footprint even for large files
+- Responsive editing experience
+
+### Roadmap
+- Text editing and modification
+- Search and replace functionality
+- Syntax highlighting for common programming languages
+- Multiple file editing with tabs or buffers
+- Configuration system for key bindings and preferences
+
+## Technologies
+
+### Tech Stack
+- **C**: Core programming language
+- **POSIX APIs**: Terminal handling and file operations
+- **Piece Table**: Efficient text storage and manipulation
+- **Make**: Build system
+
+### Project Structure
 ```
-.
-├── bin/             # Binary output directory
+neocode/
+├── bin/             # Compiled binary
 ├── include/         # Header files
-│   ├── core/        # Core components (buffer, editor)
-│   ├── io/          # Input/output handling
-│   ├── ui/          # User interface components
+│   ├── core/        # Core functionality
+│   ├── io/          # Input/output operations
+│   ├── ui/          # User interface
 │   └── utils/       # Utility functions
 ├── obj/             # Object files
 ├── src/             # Source code
 │   ├── core/        # Core implementation
-│   ├── io/          # IO implementation
+│   ├── io/          # I/O implementation
 │   ├── ui/          # UI implementation
 │   ├── utils/       # Utilities implementation
 │   └── main.c       # Entry point
-├── main.sh          # Build and run script
+├── .gitignore       # Git ignore file
 ├── Makefile         # Build configuration
-└── README.md        # This file
+└── README.md        # Project documentation
 ```
 
-## Development Status
-
-Neocode is in early development. Current implemented features:
-
-- View and navigate files
-- Mouse and keyboard navigation
-- Line numbers and status bar
-
-### Future Features
-
-- Syntax highlighting for multiple languages
-- Text editing operations (insert, delete)
-- Multiple buffers/tabs
-- Find and replace
-- Configuration options
-- Extended mouse support (selection)
-- Undo/redo functionality
+### Architecture
+Neocode uses a modular MVC-inspired architecture:
+- **Model**: Buffer (piece table) for text storage and manipulation
+- **View**: Viewport and UI for displaying and rendering content
+- **Controller**: Editor and Commands for handling user input and operations
 
 ## Contributing
 
-Contributions are welcome! Feel free to submit issues or pull requests.
+### How to Submit Issues
+Please submit issues through the GitHub issue tracker with a clear description of the problem, expected behavior, and steps to reproduce.
 
-### Development Setup
+### Pull Request Process
+1. Fork the repository and create a feature branch
+2. Make your changes with appropriate tests
+3. Ensure code follows the project's coding standards
+4. Submit a pull request with a clear description of changes
 
-1. Fork the repository
-2. Clone your fork
-3. Make your changes
-4. Submit a pull request
+### Coding Standards
+- Follow C99 standards
+- Use consistent indentation (4 spaces)
+- Include comments for non-obvious code sections
+- Keep functions small and focused on a single responsibility
 
 ## License
 
-This project is open source and available under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## Status
 
-- Inspired by editors like VS Code, Vim, and Nano
-- Built with a focus on terminal efficiency and modern UI practices
+- **Current Version**: v0.1.0
+- **Status**: Active Development
+- **Last Updated**: April 2025
 
-## Contact
+### Release Notes
+Initial alpha release featuring file viewing capabilities, navigation, and the core architecture. Editing capabilities are planned for the next release.
 
-- Maintainer: [Rhamsez Thevenin](mailto:rhamzthev@gmail.com)
-- Project Repository: [GitHub](https://github.com/rhamzthev/neocode)
+---
+
+Built by Rhamsez Thevenin 🌹
