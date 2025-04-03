@@ -174,5 +174,5 @@ This project is open source and available under the MIT License.
 
 ## Contact
 
-- Maintainer: [Your Name](mailto:your.email@example.com)
-- Project Repository: [GitHub](https://github.com/yourusername/neocode)
+- Maintainer: [Rhamsez Thevenin](mailto:rhamzthev@gmail.com)
+- Project Repository: [GitHub](https://github.com/rhamzthev/neocode)
